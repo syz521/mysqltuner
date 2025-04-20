@@ -1,0 +1,72 @@
+# Per-thread memory:
+per_thread_buffers = read_buffer_size
++ read_rnd_buffer_size
++ sort_buffer_size
++ thread_stack
++ join_buffer_size
++ binlog_cache_size
+
+#total_per_thread_buffers
+total_per_thread_buffers = per_thread_buffers * max_connections
+
+#Max total per-thread memory reached
+max_total_per_thread_buffers = per_thread_buffers * Max_used_connections
+
+# Server-wide memory
+max_tmp_table_size = min(tmp_table_size, max_heap_table_size), 
+
+server_buffers = key_buffer_size
++ max_tmp_table_size 
++ innodb_buffer_pool_size
++ innodb_additional_mem_pool_size
++ innodb_log_buffer_size
++ query_cache_size
+
+# Global memory
+max_used_memory = server_buffers
++ max_total_per_thread_buffers
++ performance_schema.memory
+
+# memory
+max_used_memory / physical_memory <= 85%
+
+
+# mysql_stats
+Slow_queries / Questions < 5%
+Max_used_connections / max_connections < 85% or decrease wait_timeout & interactive_timeout; increase max_connections
+Aborted_connects/Connections < 3% or check network issues
+Sort_merge_passes / (Sort_scan+Sort_range) < 10% or increase sort_buffer_size & read_rnd_buffer_size
+(Select_range_check+Select_full_join) / Uptime / 86400  <  250 or increase join_buffer_size
+Created_tmp_disk_tables / Created_tmp_tables < 25% or increase tmp_table_size & max_heap_table_size; tmp_table_size = max_heap_table_size
+Threads_created/Connections > 50% or increase thread_cache_size
+Table_open_cache_hits / (Table_open_cache_hits+Table_open_cache_misses) >  20% or increase table_open_cache
+table_definition_cache >= total_tables_c or increase table_definition_cache
+Open_files / open_files_limit < 85% or increase open_files_limit
+Table_locks_immediate / (Table_locks_waited+Table_locks_immediate) > 95% or Optimize queries
+(Binlog_cache_use-Binlog_cache_disk_use)/Binlog_cache_use > 99% or Increase binlog_cache_size
+
+# Recommendations for ThreadPool
+cpu_cores < thread_pool_size < 1.5*cpu_cores or adjust thread_pool_size, thread_pool_size between 16 and 36 when using InnoDB storage engine
+
+# Recommendations for Galera
+(cpu_cores) * 2 < wsrep_slave_threads  < (cpu_cores) * 4 or adjust wsrep_slave_threads in [(cpu_cores) * 2, cpu_cores) * 4]
+wsrep_slave_FK_checks = on or adjust wsrep_slave_FK_checks=on
+innodb_autoinc_lock_mode = 2 or adjust innodb_autoinc_lock_mode=2
+gcs.fc_limit =  5 * wsrep_slave_threads  or adjust ...
+gcs.fc_factor = 0.8 or adjust ...
+wsrep_flow_control_paused <= 0.02
+
+
+#innodb config
+innodb_log_file_size * innodb_log_files_in_group / innodb_buffer_pool_size = 25%
+innodb_buffer_pool_instances = min(64, innodb_buffer_pool_size / ( 1024 * 1024 * 1024 ))
+innodb_buffer_pool_size = k * (innodb_buffer_pool_chunk_size*innodb_buffer_pool_instances)
+(Innodb_buffer_pool_read_requests - Innodb_buffer_pool_reads) / Innodb_buffer_pool_read_requests >= 90% or increase innodb_buffer_pool_size
+(Innodb_log_write_requests - Innodb_log_writes) / Innodb_log_write_requests >= 90%  or increase innodb_log_buffer_size
+Innodb_log_waits / Innodb_log_writes < 000001 or increase innodb_log_buffer_size
+innodb_buffer_pool_size > data_size or increase innodb_buffer_pool_size
+
+
+
+
+
